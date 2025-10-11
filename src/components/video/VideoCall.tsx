@@ -1,23 +1,26 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { db } from '@/lib/firebase/config';
 import {
   doc,
   setDoc,
-  getDoc,
   onSnapshot,
   collection,
   addDoc,
   deleteDoc,
-  query,
-  getDocs,
   writeBatch,
+  getDocs,
+  updateDoc,
+  getDoc,
+  DocumentReference,
 } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { PhoneOff, Mic, MicOff, Video, VideoOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+import type { Call } from '@/lib/types';
+
 
 const servers = {
   iceServers: [
@@ -30,168 +33,44 @@ const servers = {
 
 interface VideoCallProps {
   onHangUp: () => void;
+  callId: string;
+  currentUser: string;
 }
 
-export default function VideoCall({ onHangUp }: VideoCallProps) {
-  const [pc, setPc] = useState<RTCPeerConnection | null>(null);
+export default function VideoCall({ onHangUp, callId, currentUser }: VideoCallProps) {
+  const pcRef = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const [callId, setCallId] = useState<string | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const peerConnection = new RTCPeerConnection(servers);
-    setPc(peerConnection);
-
-    const setupMedia = async () => {
-      try {
-        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setHasCameraPermission(true);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStream;
-        }
-
-        localStream.getTracks().forEach((track) => {
-          if (peerConnection.signalingState !== 'closed') {
-            peerConnection.addTrack(track, localStream);
-          }
+  const cleanup = useCallback(async (isInitiator: boolean) => {
+    if (pcRef.current) {
+        pcRef.current.getTransceivers().forEach(transceiver => {
+            transceiver.stop();
         });
-
-        peerConnection.ontrack = (event) => {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-          }
-        };
-
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this feature.',
-        });
-      }
-    };
-
-    setupMedia();
-    
-    return () => {
-        if (peerConnection.signalingState !== 'closed') {
-          peerConnection.close();
-        }
-        if (localVideoRef.current && localVideoRef.current.srcObject) {
-            const stream = localVideoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
-    };
-  }, [toast]);
-
-  const handleCreateCall = async () => {
-    if (!pc) return;
-    const callDoc = doc(collection(db, 'calls'));
-    const offerCandidates = collection(callDoc, 'offerCandidates');
-    const answerCandidates = collection(callDoc, 'answerCandidates');
-    setCallId(callDoc.id);
-
-    pc.onicecandidate = (event) => {
-      event.candidate && addDoc(offerCandidates, event.candidate.toJSON());
-    };
-
-    const offerDescription = await pc.createOffer();
-    await pc.setLocalDescription(offerDescription);
-    const offer = { sdp: offerDescription.sdp, type: offerDescription.type };
-    await setDoc(callDoc, { offer });
-
-    onSnapshot(callDoc, (snapshot) => {
-      const data = snapshot.data();
-      if (pc.signalingState !== 'closed' && !pc.currentRemoteDescription && data?.answer) {
-        const answerDescription = new RTCSessionDescription(data.answer);
-        pc.setRemoteDescription(answerDescription);
-      }
-    });
-
-    onSnapshot(answerCandidates, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          if (pc.signalingState !== 'closed') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            pc.addIceCandidate(candidate);
-          }
-        }
-      });
-    });
-  };
-
-  const handleAnswerCall = async (id: string) => {
-    if (!pc) return;
-    setCallId(id);
-    const callDoc = doc(db, 'calls', id);
-    const answerCandidates = collection(callDoc, 'answerCandidates');
-    const offerCandidates = collection(callDoc, 'offerCandidates');
-
-    pc.onicecandidate = (event) => {
-      event.candidate && addDoc(answerCandidates, event.candidate.toJSON());
-    };
-
-    const callData = (await getDoc(callDoc)).data();
-    if(callData?.offer) {
-        if (pc.signalingState !== 'closed') {
-            const offerDescription = new RTCSessionDescription(callData.offer);
-            await pc.setRemoteDescription(offerDescription);
-
-            const answerDescription = await pc.createAnswer();
-            await pc.setLocalDescription(answerDescription);
-
-            const answer = { type: answerDescription.type, sdp: answerDescription.sdp };
-            await setDoc(callDoc, { answer }, { merge: true });
-        }
+        pcRef.current.close();
+        pcRef.current = null;
     }
-
-    onSnapshot(offerCandidates, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              if (pc.signalingState !== 'closed') {
-                const candidate = new RTCIceCandidate(change.doc.data());
-                pc.addIceCandidate(candidate);
-              }
-            }
-        });
-    });
-  };
-
-  const handleToggleMute = () => {
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream;
-      stream.getAudioTracks().forEach(track => {
-        track.enabled = !track.enabled;
-        setIsMuted(!track.enabled);
-      });
+    if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
     }
-  };
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
 
-  const handleToggleVideo = () => {
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream;
-      stream.getVideoTracks().forEach(track => {
-        track.enabled = !track.enabled;
-        setIsVideoOff(!track.enabled);
-      });
-    }
-  };
-
-  const handleHangupCleanup = async () => {
-    if(callId) {
-        const callDocRef = doc(db, 'calls', callId);
-        const offerCandidatesQuery = collection(callDocRef, 'offerCandidates');
-        const answerCandidatesQuery = query(collection(callDocRef, 'answerCandidates'));
-        
-        const batch = writeBatch(db);
-
+    if (isInitiator) {
         try {
+            const callDocRef = doc(db, 'calls', callId);
+            const offerCandidatesQuery = collection(callDocRef, 'offerCandidates');
+            const answerCandidatesQuery = collection(callDocRef, 'answerCandidates');
+            
+            const batch = writeBatch(db);
+
             const offerCandidatesSnapshot = await getDocs(offerCandidatesQuery);
             offerCandidatesSnapshot.forEach(doc => batch.delete(doc.ref));
 
@@ -205,46 +84,192 @@ export default function VideoCall({ onHangUp }: VideoCallProps) {
             console.error("Error cleaning up call documents:", error);
         }
     }
+  }, [callId]);
 
-    if (pc && pc.signalingState !== 'closed') {
-        pc.close();
-    }
+  const handleHangUp = useCallback(async () => {
+    await cleanup(true);
     onHangUp();
-  }
+  }, [cleanup, onHangUp]);
 
+  useEffect(() => {
+    const pc = new RTCPeerConnection(servers);
+    pcRef.current = pc;
+    let isMounted = true;
+
+    const setupMediaAndCall = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (!isMounted) {
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
+            localStreamRef.current = stream;
+            setHasCameraPermission(true);
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+
+            stream.getTracks().forEach((track) => {
+                pc.addTrack(track, stream);
+            });
+        } catch (error) {
+            console.error('Error accessing camera/mic:', error);
+            setHasCameraPermission(false);
+            toast({
+                variant: 'destructive',
+                title: 'Media Access Denied',
+                description: 'Please enable camera and microphone permissions to make a call.',
+            });
+            await cleanup(true);
+            onHangUp();
+            return;
+        }
+
+        pc.ontrack = (event) => {
+            if (remoteVideoRef.current && event.streams && event.streams[0]) {
+                remoteVideoRef.current.srcObject = event.streams[0];
+            }
+        };
+
+        const callDocRef = doc(db, 'calls', callId);
+        const callDocSnap = await getDoc(callDocRef);
+
+        if (callDocSnap.exists() && callDocSnap.data().offer) {
+            await answerCall(pc, callDocRef);
+        } else {
+            await createCall(pc, callDocRef);
+        }
+    };
+    
+    setupMediaAndCall();
+
+    const handleBeforeUnload = () => {
+      if (isMounted) {
+        handleHangUp();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        isMounted = false;
+        handleHangUp();
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [callId, currentUser, onHangUp, toast, handleHangUp, cleanup]);
+
+
+  const createCall = async (pc: RTCPeerConnection, callDocRef: DocumentReference) => {
+    const offerCandidates = collection(callDocRef, 'offerCandidates');
+    
+    pc.onicecandidate = (event) => {
+      event.candidate && addDoc(offerCandidates, event.candidate.toJSON());
+    };
+
+    const offerDescription = await pc.createOffer();
+    await pc.setLocalDescription(offerDescription);
+    const offer = { sdp: offerDescription.sdp, type: offerDescription.type };
+    await setDoc(callDocRef, { offer, caller: currentUser });
+
+    const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
+      const data = snapshot.data() as Call;
+      if (pc.signalingState !== 'closed' && !pc.currentRemoteDescription && data?.answer) {
+        const answerDescription = new RTCSessionDescription(data.answer);
+        pc.setRemoteDescription(answerDescription);
+      }
+    });
+
+    const unsubscribeAnswerCandidates = onSnapshot(collection(callDocRef, 'answerCandidates'), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const candidate = new RTCIceCandidate(change.doc.data());
+          if (pc.signalingState !== 'closed') {
+              pc.addIceCandidate(candidate);
+          }
+        }
+      });
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeAnswerCandidates();
+    };
+  };
+
+  const answerCall = async (pc: RTCPeerConnection, callDocRef: DocumentReference) => {
+    const callDocData = (await getDoc(callDocRef)).data() as Call;
+
+    if (!callDocData || !callDocData.offer) return;
+
+    pc.onicecandidate = (event) => {
+      event.candidate && addDoc(collection(callDocRef, 'answerCandidates'), event.candidate.toJSON());
+    };
+
+    await pc.setRemoteDescription(new RTCSessionDescription(callDocData.offer));
+    const answerDescription = await pc.createAnswer();
+    await pc.setLocalDescription(answerDescription);
+    const answer = { type: answerDescription.type, sdp: answerDescription.sdp };
+    await updateDoc(callDocRef, { answer, callee: currentUser });
+
+    const unsubscribeOfferCandidates = onSnapshot(collection(callDocRef, 'offerCandidates'), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const candidate = new RTCIceCandidate(change.doc.data());
+          if (pc.signalingState !== 'closed') {
+            pc.addIceCandidate(candidate);
+          }
+        }
+      });
+    });
+
+     return () => {
+      unsubscribeOfferCandidates();
+    };
+  };
+
+  const handleToggleMute = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+        setIsMuted(!track.enabled);
+      });
+    }
+  };
+
+  const handleToggleVideo = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+        setIsVideoOff(!track.enabled);
+      });
+    }
+  };
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col bg-background/80 backdrop-blur-sm">
+    <div className="absolute inset-0 z-20 flex flex-col bg-black">
       <div className="relative flex-1">
-        <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
-        <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-20 right-4 h-32 w-48 rounded-lg border-2 border-primary object-cover shadow-lg md:bottom-4" />
+        <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-contain" />
+        <video ref={localVideoRef} autoPlay playsInline muted className={cn("absolute bottom-24 right-4 h-32 w-48 rounded-lg border-2 border-primary object-cover shadow-lg md:bottom-20", isVideoOff && 'bg-black')} />
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center">
-        {!hasCameraPermission && (
-          <Alert variant="destructive" className="m-4 max-w-sm">
-            <AlertTitle>Camera Access Required</AlertTitle>
-            <AlertDescription>
-              Please allow camera access in your browser settings to use video features.
-            </AlertDescription>
-          </Alert>
-        )}
-        {!callId && hasCameraPermission && (
-            <div className="flex flex-col items-center justify-center gap-4">
-                <Button onClick={handleCreateCall} size="lg" className="bg-green-600 hover:bg-green-700">Start Call</Button>
-                <p className="text-foreground">Or ask your friend to start a call and join it.</p>
-            </div>
-        )}
-      </div>
+      {!hasCameraPermission && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <Alert variant="destructive" className="m-4 max-w-sm">
+                <AlertTitle>Camera Access Required</AlertTitle>
+                <AlertDescription>
+                Please allow camera access in your browser settings to use video features.
+                </AlertDescription>
+            </Alert>
+          </div>
+      )}
 
-      <div className="flex justify-center gap-4 bg-background/50 p-4">
+      <div className="flex justify-center gap-4 bg-black/30 p-4">
         <Button onClick={handleToggleMute} variant={isMuted ? 'destructive': 'secondary'} size="icon" className="rounded-full" disabled={!hasCameraPermission}>
             {isMuted ? <MicOff /> : <Mic />}
         </Button>
         <Button onClick={handleToggleVideo} variant={isVideoOff ? 'destructive': 'secondary'} size="icon" className="rounded-full" disabled={!hasCameraPermission}>
             {isVideoOff ? <VideoOff /> : <Video />}
         </Button>
-        <Button onClick={handleHangupCleanup} variant="destructive" size="icon" className="rounded-full">
+        <Button onClick={handleHangUp} variant="destructive" size="icon" className="rounded-full">
           <PhoneOff />
         </Button>
       </div>

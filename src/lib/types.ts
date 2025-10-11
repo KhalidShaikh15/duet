@@ -1,8 +1,9 @@
 import type { Timestamp } from 'firebase/firestore';
 
 export type User = {
-  uid: string;
-  email: string | null;
+  username: string;
+  isOnline: boolean;
+  lastActive: Timestamp;
 };
 
 export interface Message {
@@ -10,10 +11,11 @@ export interface Message {
   text: string;
   senderId: string;
   timestamp: Timestamp;
-  senderEmail: string | null;
 }
 
-export interface CallData {
+export interface Call {
     offer?: RTCSessionDescriptionInit;
     answer?: RTCSessionDescriptionInit;
+    caller: string;
+    callee?: string;
 }

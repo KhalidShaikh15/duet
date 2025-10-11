@@ -14,13 +14,13 @@ export default function MessageBubble({
   const alignment = isOwnMessage ? 'justify-end' : 'justify-start';
   const bubbleColors = isOwnMessage
     ? 'bg-primary text-primary-foreground'
-    : 'bg-card text-card-foreground';
+    : 'bg-card text-card-foreground border';
 
   return (
     <div className={cn('flex items-end gap-2', alignment)}>
       <div
         className={cn(
-          'max-w-xs rounded-lg px-4 py-2 shadow-md md:max-w-md',
+          'max-w-xs rounded-lg px-4 py-2 shadow-sm md:max-w-md',
           bubbleColors
         )}
       >

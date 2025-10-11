@@ -25,7 +25,7 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased')}>
         <Providers>
-          {children}
+          <div className="h-screen w-full overflow-hidden">{children}</div>
           <Toaster />
         </Providers>
       </body>
