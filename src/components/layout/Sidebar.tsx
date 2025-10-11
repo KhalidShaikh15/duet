@@ -1,16 +1,12 @@
 'use client';
 
-import { useAuth } from '@/hooks/use-auth';
-import { auth } from '@/lib/firebase/config';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function Sidebar() {
-  const { user } = useAuth();
-
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user1');
 
   return (
@@ -26,14 +22,6 @@ export default function Sidebar() {
       </div>
       <div className="flex flex-col items-center space-y-2">
         <ThemeToggle />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => auth.signOut()}
-          aria-label="Logout"
-        >
-          <LogOut className="h-5 w-5 text-muted-foreground" />
-        </Button>
       </div>
     </aside>
   );

@@ -9,7 +9,6 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { useAuth } from '@/hooks/use-auth';
 import type { Message } from '@/lib/types';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
@@ -25,9 +24,16 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ onStartVideoCall }: ChatWindowProps) {
-  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [senderId, setSenderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = localStorage.getItem('anonymous-user-id');
+    if (id) {
+        setSenderId(id);
+    }
+  }, []);
 
   useEffect(() => {
     const q = query(
@@ -82,7 +88,7 @@ export default function ChatWindow({ onStartVideoCall }: ChatWindowProps) {
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === user?.uid} />
+            <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === senderId} />
           ))}
         </div>
       </ScrollArea>

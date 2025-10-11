@@ -1,7 +1,9 @@
-import type { User as FirebaseUser } from 'firebase/auth';
 import type { Timestamp } from 'firebase/firestore';
 
-export type User = FirebaseUser;
+export type User = {
+  uid: string;
+  email: string | null;
+};
 
 export interface Message {
   id: string;

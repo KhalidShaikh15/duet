@@ -1,28 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { useAuth } from '@/hooks/use-auth';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
 
 export default function ChatInput() {
   const [text, setText] = useState('');
-  const { user } = useAuth();
   const [isSending, setIsSending] = useState(false);
+  const [senderId, setSenderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let id = localStorage.getItem('anonymous-user-id');
+    if (!id) {
+        id = `anon-${Math.random().toString(36).substring(2, 11)}`;
+        localStorage.setItem('anonymous-user-id', id);
+    }
+    setSenderId(id);
+  }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (text.trim() === '' || !user) return;
+    if (text.trim() === '' || !senderId) return;
 
     setIsSending(true);
     try {
       await addDoc(collection(db, 'messages'), {
         text,
-        senderId: user.uid,
-        senderEmail: user.email,
+        senderId: senderId,
+        senderEmail: 'anonymous',
         timestamp: serverTimestamp(),
       });
       setText('');
