@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import type { User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,7 +49,7 @@ export default function Inbox({ currentUser, onSelectUser, onLogout, selectedUse
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-10 w-10">
-                <AvatarImage src={userAvatar?.imageUrl} alt="My Avatar" data-ai-hint={userAvatar?.imageHint} />
+                <AvatarImage src={`https://picsum.photos/seed/${currentUser}/200/200`} alt="My Avatar" />
                 <AvatarFallback>{currentUser.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <h1 className="font-headline text-xl font-semibold truncate">{currentUser}</h1>
