@@ -15,7 +15,7 @@ export default function AppLayout() {
         {isVideoCallActive && (
           <VideoCall onHangUp={() => setIsVideoCallActive(false)} />
         )}
-        <ChatWindow onStartVideoCall={() => setIsVideoCallActive(true)} />
+        <ChatWindow onStartVideoCall={() => setIsVideoCallActive(true)} isVidCamOn={isVideoCallActive} />
       </main>
     </div>
   );

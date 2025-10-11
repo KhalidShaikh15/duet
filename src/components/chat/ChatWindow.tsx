@@ -18,21 +18,26 @@ import { Button } from '@/components/ui/button';
 import { Video } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { on } from 'events';
 
 interface ChatWindowProps {
   onStartVideoCall: () => void;
+  isVidCamOn: boolean;
 }
 
-export default function ChatWindow({ onStartVideoCall }: ChatWindowProps) {
+export default function ChatWindow({ onStartVideoCall, isVidCamOn }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [senderId, setSenderId] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = localStorage.getItem('anonymous-user-id');
-    if (id) {
-        setSenderId(id);
+    let id = localStorage.getItem('anonymous-user-id');
+    if (!id) {
+        id = `anon-${Math.random().toString(36).substring(2, 11)}`;
+        localStorage.setItem('anonymous-user-id', id);
     }
+    setSenderId(id);
   }, []);
 
   useEffect(() => {
@@ -65,7 +70,7 @@ export default function ChatWindow({ onStartVideoCall }: ChatWindowProps) {
   const friendAvatar = PlaceHolderImages.find((img) => img.id === 'user2');
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className={cn("flex h-full flex-col bg-background", isVidCamOn && "hidden")}>
       <header className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-10 w-10">
