@@ -16,6 +16,7 @@ import {
   addDoc,
   deleteDoc,
   getDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import type { Message, User, CallData } from '@/lib/types';
 import MessageBubble from './MessageBubble';
@@ -217,6 +218,21 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
 
   }, [firestore, chatId, setupStreams, initializePeerConnection, hangUp]);
 
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!firestore || !chatId) return;
+    try {
+      const messageRef = doc(firestore, 'chats', chatId, 'messages', messageId);
+      await deleteDoc(messageRef);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete message.',
+      });
+    }
+  };
+
   useEffect(() => {
       if (!firestore || !currentUser?.uid) return;
       const q = query(collection(firestore, 'calls'), where('calleeId', '==', currentUser.uid), where('status', '==', 'pending'));
@@ -311,7 +327,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           hangUp();
         }
     };
-  }, [currentUser.uid, otherUser.uid, firestore]);
+  }, [currentUser.uid, otherUser.uid, firestore, hangUp]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -372,7 +388,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
             <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
               <div className="space-y-4">
                 {messages.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === currentUser.uid} />
+                  <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === currentUser.uid} onDelete={() => handleDeleteMessage(msg.id)} />
                 ))}
               </div>
             </ScrollArea>

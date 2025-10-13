@@ -15,6 +15,7 @@ export interface Message {
   senderId: string;
   timestamp: Timestamp;
   read: boolean;
+  expireAt?: Timestamp;
 }
 
 export interface CallData {

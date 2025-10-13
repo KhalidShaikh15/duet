@@ -45,12 +45,16 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
     if (text.trim() === '' || !senderId || !firestore) return;
 
     setIsSending(true);
+
+    const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     try {
       await addDoc(collection(firestore, 'chats', chatId, 'messages'), {
         text,
         senderId: senderId,
         timestamp: serverTimestamp(),
         read: false,
+        expireAt: expireAt,
       });
       await updateUnreadCount();
       setText('');

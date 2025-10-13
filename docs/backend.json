@@ -54,6 +54,11 @@
         "imageUrl": {
           "type": "string",
           "description": "URL of an image attached to the message."
+        },
+        "expireAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the message should be automatically deleted."
         }
       },
       "required": ["senderId", "timestamp", "read"]
