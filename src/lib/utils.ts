@@ -5,6 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getChatId(user1: string, user2: string) {
-    return [user1, user2].sort().join('_');
+export function getChatId(user1Uid: string, user2Uid: string) {
+    return [user1Uid, user2Uid].sort().join('_');
 }

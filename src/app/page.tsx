@@ -1,82 +1,73 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import Auth from '@/components/auth/Auth';
-import {
-  doc,
-  updateDoc,
-  serverTimestamp,
-  getDoc,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 export default function Home() {
-  const [username, setUsername] = useState<string | null>(null);
+  const { user, loading } = useUser();
+  const firestore = useFirestore();
 
-  const updateUserStatus = useCallback(async (name: string, isOnline: boolean) => {
-    if (!name) return;
-    const userRef = doc(db, 'users', name);
-    try {
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists()) {
+  const updateUserStatus = useCallback(
+    async (uid: string, isOnline: boolean) => {
+      if (!firestore || !uid) return;
+      const userRef = doc(firestore, 'users', uid);
+      try {
         await updateDoc(userRef, {
           isOnline,
           lastActive: serverTimestamp(),
         });
+      } catch (error) {
+        // If the user document doesn't exist, create it.
+        if ((error as any).code === 'not-found' && user) {
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            isOnline: true,
+            lastActive: serverTimestamp(),
+          });
+        } else {
+          console.error('Error updating user status:', error);
+        }
       }
-    } catch (error) {
-        console.error('Error updating user status:', error);
-    }
-  }, []);
+    },
+    [firestore, user]
+  );
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      handleLoginSuccess(storedUsername);
+    if (user?.uid) {
+      updateUserStatus(user.uid, true);
     }
-  }, []);
-
-  useEffect(() => {
-    if (!username) return;
 
     const handleBeforeUnload = () => {
-      updateUserStatus(username, false);
+      if (user?.uid) {
+        updateUserStatus(user.uid, false);
+      }
     };
-    
-    const handlePageHide = () => {
-      updateUserStatus(username, false);
-    }
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pagehide', handlePageHide);
-
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handlePageHide);
+      if (user?.uid) {
+        updateUserStatus(user.uid, false);
+      }
     };
-  }, [username, updateUserStatus]);
+  }, [user?.uid, updateUserStatus]);
 
-  const handleLoginSuccess = async (name: string) => {
-    if (!name) return;
-    const trimmedName = name.trim();
-    localStorage.setItem('username', trimmedName);
-    setUsername(trimmedName);
-    await updateUserStatus(trimmedName, true);
-  };
-
-  const handleLogout = async () => {
-    if (username) {
-        await updateUserStatus(username, false);
-    }
-    localStorage.removeItem('username');
-    setUsername(null);
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
-  if (!username) {
-    return <Auth onLoginSuccess={handleLoginSuccess} />;
+  if (!user) {
+    return <Auth />;
   }
 
-  return <AppLayout username={username} onLogout={handleLogout} />;
+  return <AppLayout />;
 }

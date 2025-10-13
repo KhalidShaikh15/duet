@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   query,
@@ -9,7 +9,6 @@ import {
   limit,
   doc,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import type { Message, User } from '@/lib/types';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
@@ -17,25 +16,29 @@ import AISummary from './AISummary';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getChatId, cn } from '@/lib/utils';
+import { useUser, useFirestore } from '@/firebase';
 
 
 interface ChatWindowProps {
-  currentUser: string;
-  otherUser: string;
+  otherUser: User;
 }
 
-export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) {
+export default function ChatWindow({ otherUser }: ChatWindowProps) {
+  const { user: currentUser } = useUser();
+  const firestore = useFirestore();
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [chatPartner, setChatPartner] = useState<User | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
 
   useEffect(() => {
-    const newChatId = getChatId(currentUser, otherUser);
+    if (!currentUser?.uid || !otherUser?.uid || !firestore) return;
+
+    const newChatId = getChatId(currentUser.uid, otherUser.uid);
     setChatId(newChatId);
     setMessages([]);
 
-    const userDocRef = doc(db, 'users', otherUser);
+    const userDocRef = doc(firestore, 'users', otherUser.uid);
     const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
         if(doc.exists()) {
             setChatPartner(doc.data() as User);
@@ -44,7 +47,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         }
     });
 
-    const messagesColRef = collection(db, 'chats', newChatId, 'messages');
+    const messagesColRef = collection(firestore, 'chats', newChatId, 'messages');
     const q = query(
       messagesColRef,
       orderBy('timestamp', 'asc'),
@@ -65,7 +68,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         unsubscribeUser();
         unsubscribeMessages();
     };
-  }, [currentUser, otherUser]);
+  }, [currentUser, otherUser, firestore]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -80,21 +83,26 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
   }, [messages]);
 
   const getInitials = (name: string) => {
+    if (!name) return '';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  }
+  
+  const getDisplayName = (user: User | null) => {
+    return user?.email?.split('@')[0] || 'User';
   }
 
   return (
     <div className="relative flex h-full flex-col bg-background">
         <div className={'flex h-full flex-col'}>
-            {chatPartner ? (
+            {chatPartner && currentUser ? (
                 <>
                 <header className="flex items-center justify-between border-b p-4">
                     <div className="flex items-center gap-4">
                     <Avatar className="h-10 w-10">
-                        <AvatarFallback>{getInitials(otherUser)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(getDisplayName(chatPartner))}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <h2 className="font-headline text-xl font-semibold">{otherUser}</h2>
+                        <h2 className="font-headline text-xl font-semibold">{getDisplayName(chatPartner)}</h2>
                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                             <span className={cn("h-2 w-2 rounded-full", chatPartner.isOnline ? 'bg-green-500' : 'bg-gray-400')} />
                             {chatPartner.isOnline ? 'Online' : 'Offline'}
@@ -108,12 +116,12 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                 <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                     <div className="space-y-4">
                     {messages.map((msg) => (
-                        <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === currentUser} />
+                        <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === currentUser.uid} />
                     ))}
                     </div>
                 </ScrollArea>
                 <div className="border-t p-4">
-                    {chatId && <ChatInput chatId={chatId} senderId={currentUser} />}
+                    {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} />}
                 </div>
                 </>
             ) : (

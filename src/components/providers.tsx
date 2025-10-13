@@ -1,11 +1,15 @@
 'use client';
 
 import { ThemeProvider } from '@/context/ThemeContext';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
+
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
-        {children}
+        <FirebaseClientProvider>
+            {children}
+        </FirebaseClientProvider>
     </ThemeProvider>
   );
 }

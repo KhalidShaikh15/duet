@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
+import { useFirestore } from '@/firebase';
 
 interface ChatInputProps {
     chatId: string;
@@ -15,14 +15,15 @@ interface ChatInputProps {
 export default function ChatInput({ chatId, senderId }: ChatInputProps) {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const firestore = useFirestore();
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (text.trim() === '' || !senderId) return;
+    if (text.trim() === '' || !senderId || !firestore) return;
 
     setIsSending(true);
     try {
-      await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      await addDoc(collection(firestore, 'chats', chatId, 'messages'), {
         text,
         senderId: senderId,
         timestamp: serverTimestamp(),

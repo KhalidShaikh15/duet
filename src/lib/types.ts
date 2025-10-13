@@ -1,10 +1,11 @@
 import type { Timestamp } from 'firebase/firestore';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 export type User = {
-  username: string;
+  uid: string;
+  email: string | null;
   isOnline: boolean;
   lastActive: Timestamp;
-  password?: string;
 };
 
 export interface Message {
