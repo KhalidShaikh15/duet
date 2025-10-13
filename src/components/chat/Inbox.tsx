@@ -69,7 +69,7 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
   }, [firestore, currentUser?.uid]);
 
   return (
-    <aside className="hidden h-full w-full flex-col border-r bg-background md:flex md:max-w-xs">
+    <aside className="h-full w-full flex flex-col border-r bg-background md:max-w-xs">
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-10 w-10">
@@ -88,7 +88,7 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-1 p-2">
             {users.length === 0 && (
-                <p className="p-2 text-sm text-muted-foreground">No other users online.</p>
+                <p className="p-2 text-sm text-muted-foreground">No other users found.</p>
             )}
             {users.map((user) => (
                 <button
