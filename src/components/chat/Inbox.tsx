@@ -39,18 +39,24 @@ export default function Inbox({ onSelectUser, selectedUser }: InboxProps) {
 
   useEffect(() => {
     if (!firestore) return;
-    const q = query(
-        collection(firestore, 'users'), 
-        orderBy('isOnline', 'desc'),
-        orderBy('email', 'asc')
-    );
+    const q = query(collection(firestore, 'users'));
+    
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const userList: User[] = [];
       querySnapshot.forEach((doc) => {
-        if (doc.data().uid !== currentUser?.uid) {
-          userList.push(doc.data() as User);
+        const userData = doc.data() as User;
+        if (userData.uid !== currentUser?.uid) {
+          userList.push(userData);
         }
       });
+      
+      // Sort users client-side
+      userList.sort((a, b) => {
+        if (a.isOnline && !b.isOnline) return -1;
+        if (!a.isOnline && b.isOnline) return 1;
+        return (a.email || '').localeCompare(b.email || '');
+      });
+
       setUsers(userList);
     }, (error) => {
         console.error("Error fetching users:", error);
