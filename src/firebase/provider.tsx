@@ -1,19 +1,21 @@
-
 'use client';
 
 import React, { createContext, useContext } from 'react';
 import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 
 interface FirebaseContextType {
   app: FirebaseApp | null;
+  auth: Auth | null;
   firestore: Firestore | null;
   storage: FirebaseStorage | null;
 }
 
 const FirebaseContext = createContext<FirebaseContextType>({
   app: null,
+  auth: null,
   firestore: null,
   storage: null,
 });
@@ -41,6 +43,14 @@ export const useFirebaseApp = () => {
   }
   return app;
 };
+
+export const useAuth = () => {
+  const { auth } = useFirebase();
+  if (auth === undefined) {
+      throw new Error('Firebase Auth not available in context. Make sure you are using FirebaseProvider.');
+  }
+  return auth;
+}
 
 export const useFirestore = () => {
     const { firestore } = useFirebase();

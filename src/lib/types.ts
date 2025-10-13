@@ -2,8 +2,7 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type User = {
   uid: string;
-  username: string;
-  password?: string; // Note: Storing plaintext passwords is insecure
+  username: string; // This will now store the user's email
   isOnline: boolean;
   lastActive: Timestamp;
   unreadFrom?: { [key: string]: number };

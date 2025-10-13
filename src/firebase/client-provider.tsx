@@ -1,10 +1,11 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import { initializeFirebase } from './index';
 import { FirebaseProvider } from './provider';
-import { getStorage } from 'firebase/storage';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
+import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 
 // This provider is responsible for initializing Firebase on the client side.
@@ -24,15 +25,13 @@ export function FirebaseClientProvider({
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  const { app, firestore, storage } = useMemo(
+  const { app, auth, firestore, storage } = useMemo(
     () => {
         const firebase = initializeFirebase(firebaseConfig as any);
-        const storage = getStorage(firebase.app);
-        return { ...firebase, storage };
+        return firebase;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
   
-  return <FirebaseProvider value={{app, firestore, storage}}>{children}</FirebaseProvider>;
+  return <FirebaseProvider value={{app, auth, firestore, storage}}>{children}</FirebaseProvider>;
 }

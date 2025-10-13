@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, where } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -30,16 +30,14 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
   };
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !currentUser?.uid) return;
     
-    const q = query(collection(firestore, 'users'));
+    const q = query(collection(firestore, 'users'), where('uid', '!=', currentUser.uid));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       let userList: User[] = [];
       querySnapshot.forEach((doc) => {
-        if (doc.id !== currentUser.uid) {
-            userList.push({ uid: doc.id, ...doc.data() } as User);
-        }
+          userList.push({ uid: doc.id, ...doc.data() } as User);
       });
       
       userList.sort((a, b) => {
@@ -71,7 +69,7 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
   }, [firestore, currentUser?.uid]);
 
   return (
-    <aside className="flex h-full w-full flex-col border-r bg-background md:max-w-xs">
+    <aside className="hidden h-full w-full flex-col border-r bg-background md:flex md:max-w-xs">
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-10 w-10">

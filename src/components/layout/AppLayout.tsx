@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { getAuth, signOut } from 'firebase/auth';
 import Inbox from '@/components/chat/Inbox';
 import ChatWindow from '@/components/chat/ChatWindow';
 import type { User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { PanelLeftOpen, PanelRightOpen, MessageSquare } from 'lucide-react';
+import { PanelLeftOpen, PanelRightOpen, MessageSquare, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
@@ -16,9 +17,34 @@ interface AppLayoutProps {
 export default function AppLayout({ user, onLogout }: AppLayoutProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
+  
+  const handleLogout = async () => {
+    onLogout();
+    await signOut(getAuth());
+  }
 
   return (
     <div className="flex h-screen w-full bg-secondary md:flex-row flex-col">
+       <div className="flex items-center justify-between border-b p-4 md:hidden">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <h1 className="font-headline text-xl font-semibold truncate">{user.username}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsInboxOpen(!isInboxOpen)}
+            >
+              {isInboxOpen ? <PanelLeftOpen /> : <PanelRightOpen />}
+              <span className="sr-only">Toggle Inbox</span>
+            </Button>
+             <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+              <LogOut className="h-5 w-5" />
+              <span className="sr-only">Logout</span>
+            </Button>
+        </div>
+      </div>
+
       <div className={cn(
         "absolute left-0 top-0 z-20 h-full w-full transform transition-transform md:relative md:w-auto md:max-w-xs md:translate-x-0",
         isInboxOpen ? 'translate-x-0' : '-translate-x-full'
@@ -30,20 +56,10 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
             setIsInboxOpen(false); // Close inbox on user selection
           }} 
           selectedUser={selectedUser}
-          onLogout={onLogout}
+          onLogout={handleLogout}
         />
       </div>
       <main className="flex-1 relative">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="absolute left-2 top-2 z-30 md:hidden"
-          onClick={() => setIsInboxOpen(!isInboxOpen)}
-        >
-          {isInboxOpen ? <PanelLeftOpen /> : <PanelRightOpen />}
-          <span className="sr-only">Toggle Inbox</span>
-        </Button>
-        
         {selectedUser ? (
           <ChatWindow currentUser={user} otherUser={selectedUser} />
         ) : (

@@ -7,15 +7,11 @@
       "properties": {
         "uid": {
           "type": "string",
-          "description": "The user's unique ID."
+          "description": "The user's unique ID from Firebase Auth."
         },
         "username": {
           "type": "string",
-          "description": "The user's display name."
-        },
-        "password": {
-          "type": "string",
-          "description": "The user's password (for manual login)."
+          "description": "The user's email address, used as a display name."
         },
         "isOnline": {
           "type": "boolean",
@@ -104,7 +100,7 @@
     }
   },
   "auth": {
-    "providers": []
+    "providers": ["email"]
   },
   "firestore": {
     "/users/{userId}": {

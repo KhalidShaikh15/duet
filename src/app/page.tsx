@@ -2,49 +2,42 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import Login from '@/components/auth/Login';
-import { useFirestore } from '@/firebase';
-import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { User } from '@/lib/types';
+import Auth from '@/components/auth/Auth';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('duet-user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
 
   const updateUserStatus = useCallback(
     async (uid: string, isOnline: boolean) => {
       if (!firestore || !uid) return;
       const userRef = doc(firestore, 'users', uid);
       try {
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          await updateDoc(userRef, {
-            isOnline,
-            lastActive: serverTimestamp(),
-          });
-        }
+        await updateDoc(userRef, {
+          isOnline,
+          lastActive: serverTimestamp(),
+        });
       } catch (error) {
-        console.error('Error updating user status:', error);
+        // If the document doesn't exist, it might be a new user.
+        // The creation logic in Auth.tsx should handle the initial document.
+        console.warn('Could not update user status, may be a new user.', error);
       }
     },
     [firestore]
   );
-
+  
+  // Set user online on login
   useEffect(() => {
     if (user?.uid) {
       updateUserStatus(user.uid, true);
     }
+  }, [user?.uid, updateUserStatus]);
 
-    const handleBeforeUnload = () => {
+  // Set user offline on browser close
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (user?.uid) {
         updateUserStatus(user.uid, false);
       }
@@ -54,28 +47,19 @@ export default function Home() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (user?.uid) {
-        // This might not always run, but it's a good fallback
-        updateUserStatus(user.uid, false);
-      }
     };
   }, [user?.uid, updateUserStatus]);
 
-  const handleLogin = (loggedInUser: User) => {
-    localStorage.setItem('duet-user', JSON.stringify(loggedInUser));
-    setUser(loggedInUser);
-  };
-  
-  const handleLogout = () => {
+
+  const handleLogout = async () => {
     if (user?.uid) {
-      updateUserStatus(user.uid, false);
+      await updateUserStatus(user.uid, false);
     }
-    localStorage.removeItem('duet-user');
-    setUser(null);
+    // The actual sign-out is handled by the useUser hook/Firebase SDK
   };
 
 
-  if (loading) {
+  if (userLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <p>Loading...</p>
@@ -84,8 +68,8 @@ export default function Home() {
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Auth />;
   }
 
-  return <AppLayout user={user} onLogout={handleLogout} />;
+  return <AppLayout user={{uid: user.uid, username: user.email!, isOnline: true, lastActive: new Date() as any}} onLogout={handleLogout} />;
 }
