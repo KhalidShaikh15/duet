@@ -6,8 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Loader2 } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import { storage } from '@/firebase/storage';
+import { useFirestore, useStorage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
@@ -21,6 +20,7 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const firestore = useFirestore();
+  const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -33,9 +33,15 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
       });
     } catch (e) {
         // If the field doesn't exist, set it
-        await updateDoc(userRef, {
-            [`unreadFrom.${senderId}`]: 1,
-        });
+        try {
+            await updateDoc(userRef, {
+                [`unreadFrom`]: {
+                    [senderId]: 1
+                }
+            });
+        } catch (error) {
+            console.error("Error setting unread count", error)
+        }
     }
   };
 
@@ -67,7 +73,14 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !storage || !firestore) return;
+    if (!file || !storage || !firestore) {
+        toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: 'Storage or database service is not available.',
+        });
+        return;
+    };
 
     setIsUploading(true);
     try {
@@ -92,6 +105,9 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
       });
     } finally {
       setIsUploading(false);
+       if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 

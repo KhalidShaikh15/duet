@@ -4,7 +4,7 @@
 import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-import { useFirebaseApp, useFirestore, FirebaseProvider } from './provider';
+import { useFirebaseApp, useFirestore, useStorage, FirebaseProvider } from './provider';
 import { useDoc } from './firestore/use-doc';
 import { useCollection } from './firestore/use-collection';
 import { useMemoFirebase } from './memo';
@@ -15,15 +15,9 @@ function initializeFirebase(config: FirebaseOptions) {
   const app = isInitialized ? getApp() : initializeApp(config);
   const firestore = getFirestore(app);
 
-  // The auth service is no longer used.
-  // const auth = getAuth(app);
-
   if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
     const host = process.env.NEXT_PUBLIC_EMULATOR_HOST;
     if (!isInitialized) {
-        // connectAuthEmulator(auth, `http://${host}:9099`, {
-        //     disableWarnings: true,
-        // });
         connectFirestoreEmulator(firestore, host, 8080);
     }
   }
@@ -39,5 +33,6 @@ export {
   useCollection,
   useFirebaseApp,
   useFirestore,
+  useStorage,
   useMemoFirebase,
 };
