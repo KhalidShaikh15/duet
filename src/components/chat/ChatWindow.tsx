@@ -16,6 +16,7 @@ import {
   addDoc,
   deleteDoc,
   getDoc,
+  collectionGroup,
 } from 'firebase/firestore';
 import type { Message, User, CallData, IceCandidateData } from '@/lib/types';
 import MessageBubble from './MessageBubble';
@@ -104,8 +105,12 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         const callDoc = await getDoc(callDocRef.current);
         if (callDoc.exists()) {
           await updateDoc(callDocRef.current, { status: 'ended' });
+          const offerCandidates = await getDocs(collection(callDocRef.current, 'offerCandidates'));
+          offerCandidates.forEach(async (candidate) => await deleteDoc(candidate.ref));
+          const answerCandidates = await getDocs(collection(callDocRef.current, 'answerCandidates'));
+          answerCandidates.forEach(async (candidate) => await deleteDoc(candidate.ref));
+          await deleteDoc(callDocRef.current);
         }
-        // Consider deleting the doc or cleaning up candidates after a delay
     }
 
     setIsCallActive(false);
@@ -119,6 +124,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     
     setIsCallActive(true);
     callDocRef.current = doc(firestore, 'calls', chatId);
+
     const offerCandidates = collection(callDocRef.current, 'offerCandidates');
     const answerCandidates = collection(callDocRef.current, 'answerCandidates');
     
@@ -169,6 +175,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
 
   const answerCall = useCallback(async () => {
       if (!firestore || !chatId || !callDocRef.current) return;
+      
       setIsReceivingCall(false);
       setIsCallActive(true);
 
@@ -185,6 +192,11 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       };
 
       const callDocSnap = await getDoc(callDocRef.current);
+      if (!callDocSnap.exists()) {
+        console.error("Call document does not exist!");
+        hangUp();
+        return;
+      }
       const callData = callDocSnap.data() as CallData;
       
       if (callData.offer) {
@@ -209,7 +221,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         });
       }
 
-  }, [firestore, chatId, setupStreams, initializePeerConnection]);
+  }, [firestore, chatId, setupStreams, initializePeerConnection, hangUp]);
 
   // Listen for incoming calls
   useEffect(() => {
@@ -223,6 +235,9 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                 callDocRef.current = call.ref;
                 setIsReceivingCall(true);
               }
+          } else {
+            // If the pending call is removed (e.g. caller cancels), hide the answer button
+            setIsReceivingCall(false);
           }
       });
       return unsubscribe;
@@ -230,7 +245,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
 
   // Listen for hang up
    useEffect(() => {
-    if (isCallActive && callDocRef.current) {
+    if (callDocRef.current) {
       const unsubscribe = onSnapshot(callDocRef.current, (doc) => {
         const data = doc.data();
         if (data?.status === 'ended') {
@@ -239,7 +254,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       });
       return unsubscribe;
     }
-  }, [isCallActive, hangUp]);
+  }, [hangUp]);
 
 
   useEffect(() => {
@@ -249,12 +264,8 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     setChatId(newChatId);
     setMessages([]);
 
-    // End any active call when switching chats
-    if(isCallActive) {
-      hangUp();
-    }
-
     const markMessagesAsRead = async () => {
+      if (!newChatId) return;
       const messagesRef = collection(firestore, 'chats', newChatId, 'messages');
       const q = query(messagesRef, where('senderId', '==', otherUser.uid), where('read', '==', false));
       const querySnapshot = await getDocs(q);
@@ -306,11 +317,11 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     return () => {
         unsubscribeUser();
         unsubscribeMessages();
-        if(isCallActive) {
+        if (isCallActive) {
           hangUp();
         }
     };
-  }, [currentUser, otherUser, firestore]);
+  }, [currentUser.uid, otherUser.uid, firestore]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -361,7 +372,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                                 Answer Call
                             </Button>
                        ) : (
-                           <Button onClick={startCall} variant="ghost" size="icon">
+                           <Button onClick={startCall} variant="ghost" size="icon" disabled={isCallActive}>
                                 <Video className="h-5 w-5" />
                                 <span className="sr-only">Start Video Call</span>
                            </Button>
