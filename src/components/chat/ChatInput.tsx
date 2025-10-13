@@ -28,7 +28,6 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
         [`unreadFrom.${senderId}`]: increment(1),
       });
     } catch (e) {
-        // If the field doesn't exist, set it
         try {
             await updateDoc(userRef, {
                 [`unreadFrom`]: {
@@ -83,7 +82,7 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
         rows={1}
       />
       <Button type="submit" size="icon" disabled={isSending || text.trim() === ''}>
-        <Send className="h-5 w-5" />
+        <Send className="h-4 w-4 md:h-5 md:w-5" />
         <span className="sr-only">Send Message</span>
       </Button>
     </form>

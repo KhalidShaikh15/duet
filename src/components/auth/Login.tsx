@@ -104,8 +104,8 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-secondary">
-      <Card className="w-[400px]">
+    <div className="flex h-screen w-full items-center justify-center bg-secondary p-4">
+      <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="font-headline text-2xl">
             Welcome to Duet

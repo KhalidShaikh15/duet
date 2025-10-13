@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getChatId, cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
-import { Phone, Video } from 'lucide-react';
+import { Phone, Video, PanelLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatWindowProps {
@@ -36,7 +36,6 @@ interface ChatWindowProps {
   otherUser: User;
 }
 
-// Stun servers for WebRTC
 const servers = {
   iceServers: [
     {
@@ -54,7 +53,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
   const [chatId, setChatId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Video Call State
   const [isCallActive, setIsCallActive] = useState(false);
   const [isReceivingCall, setIsReceivingCall] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -62,7 +60,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
   
   const pc = useRef<RTCPeerConnection | null>(null);
   const callDocRef = useRef<any>(null);
-
 
   const setupStreams = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -119,14 +116,14 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     toast({ title: "Call Ended" });
   }, [localStream, remoteStream, toast]);
 
-  const startCall = useCallback(async () => {
+ const startCall = useCallback(async () => {
     if (!firestore || !chatId) return;
+
+    callDocRef.current = doc(firestore, 'calls', chatId);
     
     setIsCallActive(true);
-    callDocRef.current = doc(firestore, 'calls', chatId);
 
     const offerCandidates = collection(callDocRef.current, 'offerCandidates');
-    const answerCandidates = collection(callDocRef.current, 'answerCandidates');
     
     const { local, remote } = await setupStreams();
     initializePeerConnection(local, remote);
@@ -152,7 +149,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         status: 'pending'
     });
 
-    // Listen for answer
     onSnapshot(callDocRef.current, (snapshot) => {
       const data = snapshot.data();
       if (!pc.current?.currentRemoteDescription && data?.answer) {
@@ -161,8 +157,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       }
     });
 
-    // Listen for ICE candidates from callee
-    onSnapshot(answerCandidates, (snapshot) => {
+    onSnapshot(collection(callDocRef.current, 'answerCandidates'), (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const candidate = new RTCIceCandidate(change.doc.data());
@@ -173,13 +168,14 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
 
   }, [firestore, chatId, setupStreams, initializePeerConnection, currentUser.uid, otherUser.uid]);
 
-  const answerCall = useCallback(async () => {
-      if (!firestore || !chatId || !callDocRef.current) return;
+ const answerCall = useCallback(async () => {
+      if (!firestore || !chatId) return;
       
+      callDocRef.current = doc(firestore, 'calls', chatId);
+
       setIsReceivingCall(false);
       setIsCallActive(true);
 
-      const offerCandidates = collection(callDocRef.current, 'offerCandidates');
       const answerCandidates = collection(callDocRef.current, 'answerCandidates');
 
       const { local, remote } = await setupStreams();
@@ -212,7 +208,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
 
         await updateDoc(callDocRef.current, { answer, status: 'active' });
 
-        onSnapshot(offerCandidates, (snapshot) => {
+        onSnapshot(collection(callDocRef.current, 'offerCandidates'), (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     pc.current?.addIceCandidate(new RTCIceCandidate(change.doc.data()));
@@ -223,7 +219,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
 
   }, [firestore, chatId, setupStreams, initializePeerConnection, hangUp]);
 
-  // Listen for incoming calls
   useEffect(() => {
       if (!firestore || !currentUser?.uid) return;
       const q = query(collection(firestore, 'calls'), where('calleeId', '==', currentUser.uid), where('status', '==', 'pending'));
@@ -236,14 +231,12 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                 setIsReceivingCall(true);
               }
           } else {
-            // If the pending call is removed (e.g. caller cancels), hide the answer button
             setIsReceivingCall(false);
           }
       });
       return unsubscribe;
   }, [firestore, currentUser?.uid, otherUser.uid]);
 
-  // Listen for hang up
    useEffect(() => {
     if (callDocRef.current) {
       const unsubscribe = onSnapshot(callDocRef.current, (doc) => {
@@ -255,7 +248,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       return unsubscribe;
     }
   }, [hangUp]);
-
 
   useEffect(() => {
     if (!currentUser?.uid || !otherUser?.uid || !firestore) return;
@@ -317,7 +309,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     return () => {
         unsubscribeUser();
         unsubscribeMessages();
-        if (isCallActive) {
+        if (pc.current) {
           hangUp();
         }
     };
@@ -351,25 +343,26 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         <div className={cn('flex h-full flex-col', { 'hidden': isCallActive })}>
             {chatPartner && currentUser ? (
                 <>
-                <header className="flex items-center justify-between border-b p-4">
-                    <div className="flex items-center gap-4">
+                <header className="flex items-center justify-between border-b p-2 md:p-4">
+                   <div className="flex items-center gap-2 md:gap-4">
+                    <span className="md:hidden" /> 
                     <Avatar className="h-10 w-10">
                         <AvatarFallback>{getInitials(chatPartner.username)}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <h2 className="font-headline text-xl font-semibold">{chatPartner.username}</h2>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <h2 className="font-headline text-lg md:text-xl font-semibold">{chatPartner.username}</h2>
+                        <p className="text-xs md:text-sm text-muted-foreground flex items-center gap-2">
                             <span className={cn("h-2 w-2 rounded-full", chatPartner.isOnline ? 'bg-green-500' : 'bg-gray-400')} />
                             {chatPartner.isOnline ? 'Online' : 'Offline'}
                         </p>
                     </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 md:gap-2">
                       <AISummary messages={messages.slice(-10)} />
                        {isReceivingCall ? (
-                            <Button onClick={answerCall} variant="outline" className="animate-pulse border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
-                                <Phone className="mr-2 h-4 w-4"/>
-                                Answer Call
+                            <Button onClick={answerCall} variant="outline" className="animate-pulse border-green-500 text-green-500 hover:bg-green-500 hover:text-white text-xs px-2 h-8 md:text-sm md:px-4 md:h-10">
+                                <Phone className="mr-1 md:mr-2 h-4 w-4"/>
+                                Answer
                             </Button>
                        ) : (
                            <Button onClick={startCall} variant="ghost" size="icon" disabled={isCallActive}>
@@ -386,13 +379,13 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                     ))}
                     </div>
                 </ScrollArea>
-                <div className="border-t p-4">
+                <div className="border-t p-2 md:p-4">
                     {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} receiverId={otherUser.uid} />}
                 </div>
                 </>
             ) : (
                  <div className="flex h-full items-center justify-center bg-background">
-                    <div className="text-center">
+                    <div className="text-center p-4">
                     <h1 className="font-headline text-2xl text-foreground">
                         Select a user
                     </h1>

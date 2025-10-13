@@ -71,7 +71,7 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
   }, [firestore, currentUser?.uid]);
 
   return (
-    <aside className="flex w-full max-w-xs flex-col border-r bg-background">
+    <aside className="flex h-full w-full flex-col border-r bg-background md:max-w-xs">
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-10 w-10">
