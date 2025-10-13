@@ -8,6 +8,11 @@ import {
   onSnapshot,
   limit,
   doc,
+  writeBatch,
+  where,
+  getDocs,
+  serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import type { Message, User } from '@/lib/types';
 import MessageBubble from './MessageBubble';
@@ -38,6 +43,29 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     setChatId(newChatId);
     setMessages([]);
 
+    const markMessagesAsRead = async () => {
+      const messagesRef = collection(firestore, 'chats', newChatId, 'messages');
+      const q = query(messagesRef, where('senderId', '==', otherUser.uid), where('read', '==', false));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const batch = writeBatch(firestore);
+        querySnapshot.forEach(doc => {
+          batch.update(doc.ref, { read: true });
+        });
+
+        // Also reset the unread count in the current user's document
+        const currentUserRef = doc(firestore, 'users', currentUser.uid);
+        batch.update(currentUserRef, {
+          [`unreadFrom.${otherUser.uid}`]: 0,
+        });
+
+        await batch.commit();
+      }
+    };
+    
+    markMessagesAsRead();
+
     const userDocRef = doc(firestore, 'users', otherUser.uid);
     const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
         if(doc.exists()) {
@@ -60,6 +88,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         msgs.push({ id: doc.id, ...doc.data() } as Message);
       });
       setMessages(msgs);
+      markMessagesAsRead();
     }, (error) => {
         console.error("Error fetching messages:", error);
     });
@@ -117,7 +146,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                     </div>
                 </ScrollArea>
                 <div className="border-t p-4">
-                    {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} />}
+                    {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} receiverId={otherUser.uid} />}
                 </div>
                 </>
             ) : (

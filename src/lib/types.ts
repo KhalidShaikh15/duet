@@ -6,13 +6,16 @@ export type User = {
   password?: string; // Note: Storing plaintext passwords is insecure
   isOnline: boolean;
   lastActive: Timestamp;
+  unreadFrom?: { [key: string]: number };
 };
 
 export interface Message {
   id: string;
-  text: string;
+  text?: string;
+  imageUrl?: string;
   senderId: string;
   timestamp: Timestamp;
+  read: boolean;
 }
 
 export interface Call {

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 
@@ -20,6 +21,7 @@ interface InboxProps {
 export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogout }: InboxProps) {
   const firestore = useFirestore();
   const [users, setUsers] = useState<User[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<{ [key: string]: number }>({});
 
   const getInitials = (name: string) => {
     if (!name) return '';
@@ -35,13 +37,11 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       let userList: User[] = [];
       querySnapshot.forEach((doc) => {
-        // doc.id is the UID
         if (doc.id !== currentUser.uid) {
             userList.push({ uid: doc.id, ...doc.data() } as User);
         }
       });
       
-      // Sort users client-side
       userList.sort((a, b) => {
         if (a.isOnline && !b.isOnline) return -1;
         if (!a.isOnline && b.isOnline) return 1;
@@ -51,6 +51,20 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
       setUsers(userList);
     }, (error) => {
         console.error("Error fetching users:", error);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!firestore || !currentUser?.uid) return;
+
+    const currentUserRef = doc(firestore, 'users', currentUser.uid);
+    const unsubscribe = onSnapshot(currentUserRef, (doc) => {
+      if (doc.exists()) {
+        const userData = doc.data() as User;
+        setUnreadCounts(userData.unreadFrom || {});
+      }
     });
 
     return () => unsubscribe();
@@ -94,7 +108,12 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
                     </Avatar>
                     {user.isOnline && <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background" />}
                 </div>
-                <span className="truncate">{user.username}</span>
+                <span className="flex-1 truncate">{user.username}</span>
+                {unreadCounts[user.uid] > 0 && (
+                  <Badge className="h-6 w-6 shrink-0 justify-center rounded-full p-0">
+                    {unreadCounts[user.uid]}
+                  </Badge>
+                )}
                 </button>
             ))}
         </div>

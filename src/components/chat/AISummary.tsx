@@ -33,7 +33,7 @@ export default function AISummary({ messages }: AISummaryProps) {
     setLoading(true);
     setSummary('');
     try {
-      const messageTexts = messages.map((m) => m.text);
+      const messageTexts = messages.map((m) => m.text || (m.imageUrl ? 'Image' : '')).filter(Boolean);
       const result = await summarizeLastTenMessages({ messages: messageTexts });
       setSummary(result.summary);
     } catch (error) {
