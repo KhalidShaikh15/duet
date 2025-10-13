@@ -199,7 +199,10 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     pc.current = null;
     
     if (callDocRef.current) {
-        await updateDoc(callDocRef.current, { status: 'ended' });
+        const callDoc = await getDoc(callDocRef.current);
+        if (callDoc.exists()) {
+          await updateDoc(callDocRef.current, { status: 'ended' });
+        }
         // Consider deleting the doc or cleaning up candidates after a delay
     }
 
