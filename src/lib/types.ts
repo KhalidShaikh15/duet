@@ -4,6 +4,7 @@ export type User = {
   username: string;
   isOnline: boolean;
   lastActive: Timestamp;
+  password?: string;
 };
 
 export interface Message {

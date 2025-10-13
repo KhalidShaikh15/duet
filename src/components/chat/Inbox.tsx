@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import type { User } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface InboxProps {
   currentUser: string;
@@ -20,7 +19,10 @@ interface InboxProps {
 
 export default function Inbox({ currentUser, onSelectUser, onLogout, selectedUser }: InboxProps) {
   const [users, setUsers] = useState<User[]>([]);
-  const userAvatar = PlaceHolderImages.find((img) => img.id === 'user1');
+  
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  }
 
 
   useEffect(() => {
@@ -49,8 +51,7 @@ export default function Inbox({ currentUser, onSelectUser, onLogout, selectedUse
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-10 w-10">
-                <AvatarImage src={`https://picsum.photos/seed/${currentUser}/200/200`} alt="My Avatar" />
-                <AvatarFallback>{currentUser.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{getInitials(currentUser)}</AvatarFallback>
             </Avatar>
             <h1 className="font-headline text-xl font-semibold truncate">{currentUser}</h1>
         </div>
@@ -79,8 +80,7 @@ export default function Inbox({ currentUser, onSelectUser, onLogout, selectedUse
                 >
                 <div className="relative">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={`https://picsum.photos/seed/${user.username}/200/200`} alt={user.username} />
-                        <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
                     </Avatar>
                     {user.isOnline && <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background" />}
                 </div>

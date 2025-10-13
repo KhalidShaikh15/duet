@@ -14,11 +14,7 @@ import type { Message, User } from '@/lib/types';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
 import AISummary from './AISummary';
-import VideoCall from '../video/VideoCall';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Video } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getChatId, cn } from '@/lib/utils';
 
@@ -32,14 +28,12 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [chatPartner, setChatPartner] = useState<User | null>(null);
-  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
 
   useEffect(() => {
     const newChatId = getChatId(currentUser, otherUser);
     setChatId(newChatId);
     setMessages([]);
-    setIsVideoCallActive(false);
 
     const userDocRef = doc(db, 'users', otherUser);
     const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
@@ -85,35 +79,19 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     }
   }, [messages]);
 
-  const friendAvatar = PlaceHolderImages.find((img) => img.id === 'user2');
-
-  const handleStartCall = () => {
-    if (chatId) {
-        setIsVideoCallActive(true);
-    }
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
-
-  const handleHangUp = useCallback(() => {
-    setIsVideoCallActive(false);
-  }, []);
 
   return (
     <div className="relative flex h-full flex-col bg-background">
-        {isVideoCallActive && chatId && (
-            <VideoCall 
-                callId={chatId} 
-                onHangUp={handleHangUp} 
-                currentUser={currentUser}
-            />
-        )}
-        <div className={cn('flex h-full flex-col', isVideoCallActive ? 'hidden' : 'flex')}>
+        <div className={'flex h-full flex-col'}>
             {chatPartner ? (
                 <>
                 <header className="flex items-center justify-between border-b p-4">
                     <div className="flex items-center gap-4">
                     <Avatar className="h-10 w-10">
-                        <AvatarImage src={`https://picsum.photos/seed/${otherUser}/200/200`} alt={`${otherUser}'s Avatar`} />
-                        <AvatarFallback>{otherUser.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{getInitials(otherUser)}</AvatarFallback>
                     </Avatar>
                     <div>
                         <h2 className="font-headline text-xl font-semibold">{otherUser}</h2>
@@ -124,11 +102,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
                     </div>
                     </div>
                     <div className="flex items-center gap-2">
-                    <AISummary messages={messages.slice(-10)} />
-                    <Button onClick={handleStartCall} variant="ghost" size="icon">
-                        <Video className="h-5 w-5" />
-                        <span className="sr-only">Start video call</span>
-                    </Button>
+                      <AISummary messages={messages.slice(-10)} />
                     </div>
                 </header>
                 <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>

@@ -5,9 +5,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import Auth from '@/components/auth/Auth';
 import {
   doc,
-  setDoc,
-  serverTimestamp,
   updateDoc,
+  serverTimestamp,
   getDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
@@ -25,14 +24,6 @@ export default function Home() {
           isOnline,
           lastActive: serverTimestamp(),
         });
-      } else {
-         if (isOnline) {
-            await setDoc(userRef, {
-                username: name,
-                isOnline,
-                lastActive: serverTimestamp(),
-            });
-         }
       }
     } catch (error) {
         console.error('Error updating user status:', error);
@@ -42,7 +33,7 @@ export default function Home() {
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) {
-      handleLogin(storedUsername);
+      handleLoginSuccess(storedUsername);
     }
   }, []);
 
@@ -64,12 +55,10 @@ export default function Home() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
-      // We don't set user offline on unmount, only on tab close
-      // to allow for page navigation without appearing offline.
     };
   }, [username, updateUserStatus]);
 
-  const handleLogin = async (name: string) => {
+  const handleLoginSuccess = async (name: string) => {
     if (!name) return;
     const trimmedName = name.trim();
     localStorage.setItem('username', trimmedName);
@@ -86,7 +75,7 @@ export default function Home() {
   }
 
   if (!username) {
-    return <Auth onLogin={handleLogin} />;
+    return <Auth onLoginSuccess={handleLoginSuccess} />;
   }
 
   return <AppLayout username={username} onLogout={handleLogout} />;
