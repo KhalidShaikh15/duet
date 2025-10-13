@@ -23,13 +23,21 @@ import { useToast } from '@/hooks/use-toast';
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const handleSignUp = async () => {
-    if (!auth || !firestore) return;
+    if (!auth || !firestore || !username) {
+        toast({
+            variant: 'destructive',
+            title: 'Sign Up Failed',
+            description: 'Please provide a username.',
+        });
+        return;
+    };
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -42,7 +50,7 @@ export default function Auth() {
       // Create a user document in Firestore
       await setDoc(doc(firestore, 'users', user.uid), {
         uid: user.uid,
-        username: user.email,
+        username: username,
         isOnline: true,
         lastActive: serverTimestamp(),
         unreadFrom: {},
@@ -50,7 +58,7 @@ export default function Auth() {
 
       toast({
         title: 'Account Created',
-        description: `Welcome, ${user.email}!`,
+        description: `Welcome, ${username}!`,
       });
     } catch (error: any) {
       toast({
@@ -135,10 +143,18 @@ export default function Auth() {
                 Create an Account
               </CardTitle>
               <CardDescription>
-                Enter your email and password to get started.
+                Choose a username and enter your details to get started.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+               <Input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={loading}
+              />
               <Input
                 type="email"
                 placeholder="Email"

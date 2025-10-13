@@ -11,7 +11,7 @@
         },
         "username": {
           "type": "string",
-          "description": "The user's email address, used as a display name."
+          "description": "The user's chosen display name."
         },
         "isOnline": {
           "type": "boolean",

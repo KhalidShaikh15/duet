@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import Auth from '@/components/auth/Auth';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import type { User as AppUser } from '@/lib/types';
 
 export default function Home() {
-  const { user, loading: userLoading } = useUser();
+  const { user: authUser, loading: userLoading } = useUser();
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
   const firestore = useFirestore();
 
   const updateUserStatus = useCallback(
@@ -28,18 +30,26 @@ export default function Home() {
     [firestore]
   );
   
-  // Set user online on login
+  // Fetch full user profile from Firestore
   useEffect(() => {
-    if (user?.uid) {
-      updateUserStatus(user.uid, true);
+    if (authUser?.uid && firestore) {
+      const userRef = doc(firestore, 'users', authUser.uid);
+      getDoc(userRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setAppUser(docSnap.data() as AppUser);
+          updateUserStatus(authUser.uid, true);
+        }
+      });
+    } else {
+        setAppUser(null);
     }
-  }, [user?.uid, updateUserStatus]);
+  }, [authUser?.uid, firestore, updateUserStatus]);
 
   // Set user offline on browser close
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (user?.uid) {
-        updateUserStatus(user.uid, false);
+      if (authUser?.uid) {
+        updateUserStatus(authUser.uid, false);
       }
     };
 
@@ -48,12 +58,12 @@ export default function Home() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [user?.uid, updateUserStatus]);
+  }, [authUser?.uid, updateUserStatus]);
 
 
   const handleLogout = async () => {
-    if (user?.uid) {
-      await updateUserStatus(user.uid, false);
+    if (authUser?.uid) {
+      await updateUserStatus(authUser.uid, false);
     }
     // The actual sign-out is handled by the useUser hook/Firebase SDK
   };
@@ -67,9 +77,9 @@ export default function Home() {
     );
   }
 
-  if (!user) {
+  if (!appUser) {
     return <Auth />;
   }
 
-  return <AppLayout user={{uid: user.uid, username: user.email!, isOnline: true, lastActive: new Date() as any}} onLogout={handleLogout} />;
+  return <AppLayout user={appUser} onLogout={handleLogout} />;
 }
