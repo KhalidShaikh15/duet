@@ -18,9 +18,16 @@ export interface Message {
   read: boolean;
 }
 
-export interface Call {
-    offer?: RTCSessionDescriptionInit;
-    answer?: RTCSessionDescriptionInit;
-    caller: string;
-    callee?: string;
+export interface CallData {
+  offer?: RTCSessionDescriptionInit;
+  answer?: RTCSessionDescriptionInit;
+  callerId: string;
+  calleeId: string;
+  status: 'pending' | 'active' | 'ended';
+}
+
+export interface IceCandidateData {
+    candidate: string;
+    sdpMid: string;
+    sdpMLineIndex: number;
 }

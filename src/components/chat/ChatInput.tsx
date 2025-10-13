@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Loader2 } from 'lucide-react';
-import { useFirestore, useStorage } from '@/firebase';
+import { Send } from 'lucide-react';
+import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
@@ -18,10 +17,7 @@ interface ChatInputProps {
 export default function ChatInput({ chatId, senderId, receiverId }: ChatInputProps) {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const firestore = useFirestore();
-  const storage = useStorage();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const updateUnreadCount = async () => {
@@ -71,70 +67,8 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !storage || !firestore) {
-        toast({
-            variant: 'destructive',
-            title: 'Upload Failed',
-            description: 'Storage or database service is not available.',
-        });
-        return;
-    };
-
-    setIsUploading(true);
-    try {
-      const storageRef = ref(storage, `chat-images/${chatId}/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      await addDoc(collection(firestore, 'chats', chatId, 'messages'), {
-        imageUrl: downloadURL,
-        senderId: senderId,
-        timestamp: serverTimestamp(),
-        read: false,
-      });
-      await updateUnreadCount();
-
-    } catch (error) {
-      console.error('Error uploading image: ', error);
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: 'Could not upload the image. Please try again.',
-      });
-    } finally {
-      setIsUploading(false);
-       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   return (
     <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isUploading}
-        title="Attach image"
-      >
-        {isUploading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Paperclip className="h-5 w-5" />
-        )}
-        <span className="sr-only">Attach an image</span>
-      </Button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept="image/*"
-      />
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -147,9 +81,8 @@ export default function ChatInput({ chatId, senderId, receiverId }: ChatInputPro
           }
         }}
         rows={1}
-        disabled={isUploading}
       />
-      <Button type="submit" size="icon" disabled={isSending || text.trim() === '' || isUploading}>
+      <Button type="submit" size="icon" disabled={isSending || text.trim() === ''}>
         <Send className="h-5 w-5" />
         <span className="sr-only">Send Message</span>
       </Button>
