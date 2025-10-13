@@ -85,6 +85,35 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     };
   }, []);
 
+  const hangUp = useCallback(async () => {
+    if (pc.current) {
+        pc.current.getTransceivers().forEach(transceiver => {
+            transceiver.stop();
+        });
+        pc.current.close();
+    }
+    
+    localStream?.getTracks().forEach(track => track.stop());
+    remoteStream?.getTracks().forEach(track => track.stop());
+    
+    setLocalStream(null);
+    setRemoteStream(null);
+    pc.current = null;
+    
+    if (callDocRef.current) {
+        const callDoc = await getDoc(callDocRef.current);
+        if (callDoc.exists()) {
+          await updateDoc(callDocRef.current, { status: 'ended' });
+        }
+        // Consider deleting the doc or cleaning up candidates after a delay
+    }
+
+    setIsCallActive(false);
+    setIsReceivingCall(false);
+    callDocRef.current = null;
+    toast({ title: "Call Ended" });
+  }, [localStream, remoteStream, toast]);
+
   const startCall = useCallback(async () => {
     if (!firestore || !chatId) return;
     
@@ -181,36 +210,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       }
 
   }, [firestore, chatId, setupStreams, initializePeerConnection]);
-
-
-  const hangUp = useCallback(async () => {
-    if (pc.current) {
-        pc.current.getTransceivers().forEach(transceiver => {
-            transceiver.stop();
-        });
-        pc.current.close();
-    }
-    
-    localStream?.getTracks().forEach(track => track.stop());
-    remoteStream?.getTracks().forEach(track => track.stop());
-    
-    setLocalStream(null);
-    setRemoteStream(null);
-    pc.current = null;
-    
-    if (callDocRef.current) {
-        const callDoc = await getDoc(callDocRef.current);
-        if (callDoc.exists()) {
-          await updateDoc(callDocRef.current, { status: 'ended' });
-        }
-        // Consider deleting the doc or cleaning up candidates after a delay
-    }
-
-    setIsCallActive(false);
-    setIsReceivingCall(false);
-    callDocRef.current = null;
-    toast({ title: "Call Ended" });
-  }, [localStream, remoteStream, toast]);
 
   // Listen for incoming calls
   useEffect(() => {
@@ -311,7 +310,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           hangUp();
         }
     };
-  }, [currentUser, otherUser, firestore, isCallActive, hangUp]);
+  }, [currentUser, otherUser, firestore]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
