@@ -29,7 +29,8 @@ export default function Inbox({ onSelectUser, selectedUser }: InboxProps) {
   
   const getInitials = (name: string) => {
     if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const displayName = name.split('@')[0];
+    return displayName.charAt(0).toUpperCase();
   }
 
   const getDisplayName = (user: User | null) => {
@@ -38,14 +39,15 @@ export default function Inbox({ onSelectUser, selectedUser }: InboxProps) {
   }
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !currentUser?.uid) return;
+    
     const q = query(collection(firestore, 'users'));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const userList: User[] = [];
       querySnapshot.forEach((doc) => {
         const userData = doc.data() as User;
-        if (userData.uid !== currentUser?.uid) {
+        if (userData.uid !== currentUser.uid) {
           userList.push(userData);
         }
       });
