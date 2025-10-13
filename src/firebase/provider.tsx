@@ -3,18 +3,19 @@
 
 import React, { createContext, useContext } from 'react';
 import type { FirebaseApp } from 'firebase/app';
-import type { Auth } from 'firebase/auth';
+// Auth is no longer a dependency
+// import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
 interface FirebaseContextType {
   app: FirebaseApp | null;
-  auth: Auth | null;
+  // auth: Auth | null;
   firestore: Firestore | null;
 }
 
 const FirebaseContext = createContext<FirebaseContextType>({
   app: null,
-  auth: null,
+  // auth: null,
   firestore: null,
 });
 
@@ -42,7 +43,8 @@ export const useFirebaseApp = () => {
   return app;
 };
 
-
+// useAuth hook is no longer needed
+/*
 export const useAuth = () => {
     const { auth } = useFirebase();
     if (auth === undefined) {
@@ -50,6 +52,7 @@ export const useAuth = () => {
     }
     return auth;
 }
+*/
 
 export const useFirestore = () => {
     const { firestore } = useFirebase();

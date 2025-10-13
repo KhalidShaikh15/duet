@@ -22,10 +22,11 @@ export function FirebaseClientProvider({
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  const { app, auth, firestore } = useMemo(
+  const { app, firestore } = useMemo(
     () => initializeFirebase(firebaseConfig as any),
-    [firebaseConfig]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
   
-  return <FirebaseProvider value={{app, auth, firestore}}>{children}</FirebaseProvider>;
+  return <FirebaseProvider value={{app, firestore}}>{children}</FirebaseProvider>;
 }

@@ -16,15 +16,15 @@ import AISummary from './AISummary';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getChatId, cn } from '@/lib/utils';
-import { useUser, useFirestore } from '@/firebase';
+import { useFirestore } from '@/firebase';
 
 
 interface ChatWindowProps {
+  currentUser: User;
   otherUser: User;
 }
 
-export default function ChatWindow({ otherUser }: ChatWindowProps) {
-  const { user: currentUser } = useUser();
+export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) {
   const firestore = useFirestore();
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -41,7 +41,7 @@ export default function ChatWindow({ otherUser }: ChatWindowProps) {
     const userDocRef = doc(firestore, 'users', otherUser.uid);
     const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
         if(doc.exists()) {
-            setChatPartner(doc.data() as User);
+            setChatPartner({ uid: doc.id, ...doc.data() } as User);
         } else {
             setChatPartner(null);
         }
@@ -82,16 +82,11 @@ export default function ChatWindow({ otherUser }: ChatWindowProps) {
     }
   }, [messages]);
 
-  const getInitials = (name: string) => {
-    if (!name) return '';
-    const displayName = name.split('@')[0];
-    return displayName.charAt(0).toUpperCase();
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name.charAt(0).toUpperCase();
   }
   
-  const getDisplayName = (user: User | null) => {
-    return user?.email?.split('@')[0] || 'User';
-  }
-
   return (
     <div className="relative flex h-full flex-col bg-background">
         <div className={'flex h-full flex-col'}>
@@ -100,10 +95,10 @@ export default function ChatWindow({ otherUser }: ChatWindowProps) {
                 <header className="flex items-center justify-between border-b p-4">
                     <div className="flex items-center gap-4">
                     <Avatar className="h-10 w-10">
-                        <AvatarFallback>{getInitials(getDisplayName(chatPartner))}</AvatarFallback>
+                        <AvatarFallback>{getInitials(chatPartner.username)}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <h2 className="font-headline text-xl font-semibold">{getDisplayName(chatPartner)}</h2>
+                        <h2 className="font-headline text-xl font-semibold">{chatPartner.username}</h2>
                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                             <span className={cn("h-2 w-2 rounded-full", chatPartner.isOnline ? 'bg-green-500' : 'bg-gray-400')} />
                             {chatPartner.isOnline ? 'Online' : 'Offline'}

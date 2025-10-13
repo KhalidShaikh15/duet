@@ -2,11 +2,9 @@
 'use client';
 
 import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-import { useFirebaseApp, useAuth, useFirestore, FirebaseProvider } from './provider';
-import { useUser } from './auth/use-user';
+import { useFirebaseApp, useFirestore, FirebaseProvider } from './provider';
 import { useDoc } from './firestore/use-doc';
 import { useCollection } from './firestore/use-collection';
 import { useMemoFirebase } from './memo';
@@ -15,31 +13,31 @@ import { FirebaseClientProvider } from './client-provider';
 function initializeFirebase(config: FirebaseOptions) {
   const isInitialized = getApps().length > 0;
   const app = isInitialized ? getApp() : initializeApp(config);
-  const auth = getAuth(app);
   const firestore = getFirestore(app);
+
+  // The auth service is no longer used.
+  // const auth = getAuth(app);
 
   if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
     const host = process.env.NEXT_PUBLIC_EMULATOR_HOST;
     if (!isInitialized) {
-        connectAuthEmulator(auth, `http://${host}:9099`, {
-            disableWarnings: true,
-        });
+        // connectAuthEmulator(auth, `http://${host}:9099`, {
+        //     disableWarnings: true,
+        // });
         connectFirestoreEmulator(firestore, host, 8080);
     }
   }
 
-  return { app, auth, firestore };
+  return { app, auth: null, firestore };
 }
 
 export {
   initializeFirebase,
   FirebaseProvider,
   FirebaseClientProvider,
-  useUser,
   useDoc,
   useCollection,
   useFirebaseApp,
-  useAuth,
   useFirestore,
   useMemoFirebase,
 };

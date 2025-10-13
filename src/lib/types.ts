@@ -1,9 +1,9 @@
 import type { Timestamp } from 'firebase/firestore';
-import type { User as FirebaseUser } from 'firebase/auth';
 
 export type User = {
   uid: string;
-  email: string | null;
+  username: string;
+  password?: string; // Note: Storing plaintext passwords is insecure
   isOnline: boolean;
   lastActive: Timestamp;
 };

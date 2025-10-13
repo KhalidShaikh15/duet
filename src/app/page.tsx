@@ -1,39 +1,42 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import Auth from '@/components/auth/Auth';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import Login from '@/components/auth/Login';
+import { useFirestore } from '@/firebase';
+import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import type { User } from '@/lib/types';
 
 export default function Home() {
-  const { user, loading } = useUser();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const firestore = useFirestore();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('duet-user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
 
   const updateUserStatus = useCallback(
     async (uid: string, isOnline: boolean) => {
       if (!firestore || !uid) return;
       const userRef = doc(firestore, 'users', uid);
       try {
-        await updateDoc(userRef, {
-          isOnline,
-          lastActive: serverTimestamp(),
-        });
-      } catch (error) {
-        // If the user document doesn't exist, create it.
-        if ((error as any).code === 'not-found' && user) {
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            isOnline: true,
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          await updateDoc(userRef, {
+            isOnline,
             lastActive: serverTimestamp(),
           });
-        } else {
-          console.error('Error updating user status:', error);
         }
+      } catch (error) {
+        console.error('Error updating user status:', error);
       }
     },
-    [firestore, user]
+    [firestore]
   );
 
   useEffect(() => {
@@ -52,10 +55,25 @@ export default function Home() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (user?.uid) {
+        // This might not always run, but it's a good fallback
         updateUserStatus(user.uid, false);
       }
     };
   }, [user?.uid, updateUserStatus]);
+
+  const handleLogin = (loggedInUser: User) => {
+    localStorage.setItem('duet-user', JSON.stringify(loggedInUser));
+    setUser(loggedInUser);
+  };
+  
+  const handleLogout = () => {
+    if (user?.uid) {
+      updateUserStatus(user.uid, false);
+    }
+    localStorage.removeItem('duet-user');
+    setUser(null);
+  };
+
 
   if (loading) {
     return (
@@ -66,8 +84,8 @@ export default function Home() {
   }
 
   if (!user) {
-    return <Auth />;
+    return <Login onLogin={handleLogin} />;
   }
 
-  return <AppLayout />;
+  return <AppLayout user={user} onLogout={handleLogout} />;
 }
