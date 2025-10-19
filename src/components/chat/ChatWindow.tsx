@@ -117,11 +117,12 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
   const startCall = useCallback(async () => {
     if (!firestore || !chatId) return;
     
-    callDocRef.current = doc(firestore, 'calls', chatId);
+    const newCallDocRef = doc(firestore, 'calls', chatId);
+    callDocRef.current = newCallDocRef;
     
     setIsCallActive(true);
 
-    const offerCandidates = collection(callDocRef.current, 'offerCandidates');
+    const offerCandidates = collection(newCallDocRef, 'offerCandidates');
     
     const { local, remote } = await setupStreams();
     initializePeerConnection(local, remote);
@@ -140,14 +141,14 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       type: offerDescription.type,
     };
 
-    await setDoc(callDocRef.current, { 
+    await setDoc(newCallDocRef, { 
         offer, 
         callerId: currentUser.uid, 
         calleeId: otherUser.uid,
         status: 'pending'
     });
 
-    onSnapshot(callDocRef.current, (snapshot) => {
+    onSnapshot(newCallDocRef, (snapshot) => {
       const data = snapshot.data();
       if (!pc.current?.currentRemoteDescription && data?.answer) {
         const answerDescription = new RTCSessionDescription(data.answer);
@@ -155,7 +156,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       }
     });
 
-    onSnapshot(collection(callDocRef.current, 'answerCandidates'), (snapshot) => {
+    onSnapshot(collection(newCallDocRef, 'answerCandidates'), (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const candidate = new RTCIceCandidate(change.doc.data());
@@ -169,12 +170,13 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
  const answerCall = useCallback(async () => {
       if (!firestore || !chatId) return;
 
-      callDocRef.current = doc(firestore, 'calls', chatId);
+      const newCallDocRef = doc(firestore, 'calls', chatId);
+      callDocRef.current = newCallDocRef;
 
       setIsReceivingCall(false);
       setIsCallActive(true);
 
-      const answerCandidates = collection(callDocRef.current, 'answerCandidates');
+      const answerCandidates = collection(newCallDocRef, 'answerCandidates');
 
       const { local, remote } = await setupStreams();
       initializePeerConnection(local, remote);
@@ -185,7 +187,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           }
       };
 
-      const callDocSnap = await getDoc(callDocRef.current);
+      const callDocSnap = await getDoc(newCallDocRef);
       if (!callDocSnap.exists()) {
         console.error("Call document does not exist!");
         hangUp();
@@ -204,9 +206,9 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           type: answerDescription.type,
         };
 
-        await updateDoc(callDocRef.current, { answer, status: 'active' });
+        await updateDoc(newCallDocRef, { answer, status: 'active' });
 
-        onSnapshot(collection(callDocRef.current, 'offerCandidates'), (snapshot) => {
+        onSnapshot(collection(newCallDocRef, 'offerCandidates'), (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     pc.current?.addIceCandidate(new RTCIceCandidate(change.doc.data()));
@@ -325,7 +327,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           hangUp();
         }
     };
-  }, [currentUser.uid, otherUser.uid, firestore, hangUp]);
+  }, [currentUser.uid, otherUser.uid, firestore]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -401,7 +403,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           ))}
         </div>
       </ScrollArea>
-      <div className="shrink-0 border-t p-2 md:p-4 bg-background">
+      <div className="shrink-0 border-t bg-background p-2 md:p-4 pb-4">
         {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} receiverId={otherUser.uid} />}
       </div>
     </div>
