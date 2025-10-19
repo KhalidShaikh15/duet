@@ -8,6 +8,7 @@ import type { User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { PanelLeftOpen, PanelRightOpen, MessageSquare, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase';
 
 interface AppLayoutProps {
     user: User;
@@ -31,7 +32,7 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
             currentUser={user}
             onSelectUser={(user) => {
               setSelectedUser(user);
-              setIsInboxOpen(false); // Close inbox on user selection
+              setIsInboxOpen(false);
             }} 
             selectedUser={selectedUser}
             onLogout={handleLogout}
@@ -40,67 +41,73 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
        
        <div className="flex flex-1 flex-col">
             {/* Mobile Header */}
-            <div className="flex items-center justify-between border-b p-2 md:hidden bg-background">
+            <header className="flex items-center justify-between border-b p-2 md:hidden bg-background">
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <h1 className="font-headline text-xl font-semibold truncate">{user.username}</h1>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsInboxOpen(!isInboxOpen)}
+                        className="h-8 w-8"
+                    >
+                        <PanelLeftOpen className="h-5 w-5" />
+                        <span className="sr-only">Toggle Inbox</span>
+                    </Button>
+                    <h1 className="font-headline text-xl font-semibold truncate">
+                        {selectedUser ? selectedUser.username : "Duet"}
+                    </h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setIsInboxOpen(!isInboxOpen)}
-                    >
-                    {isInboxOpen ? <PanelLeftOpen /> : <PanelRightOpen />}
-                    <span className="sr-only">Toggle Inbox</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-                    <LogOut className="h-5 w-5" />
-                    <span className="sr-only">Logout</span>
+                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout" className="h-8 w-8">
+                        <LogOut className="h-5 w-5" />
+                        <span className="sr-only">Logout</span>
                     </Button>
                 </div>
-            </div>
+            </header>
 
             {/* Mobile Inbox (Overlay) */}
-            {isInboxOpen && (
-                <div className="absolute left-0 top-0 z-20 h-full w-full bg-black/50 md:hidden" onClick={() => setIsInboxOpen(false)}>
-                    <div 
-                        className={cn(
-                            "absolute left-0 top-0 z-30 h-full w-4/5 max-w-xs transform transition-transform duration-300 ease-in-out bg-background",
-                            isInboxOpen ? 'translate-x-0' : '-translate-x-full'
-                        )}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <Inbox 
-                            currentUser={user}
-                            onSelectUser={(user) => {
-                                setSelectedUser(user);
-                                setIsInboxOpen(false); // Close inbox on user selection
-                            }} 
-                            selectedUser={selectedUser}
-                            onLogout={handleLogout}
-                        />
-                    </div>
-                </div>
-            )}
+            <div className={cn(
+                "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden",
+                isInboxOpen ? "block" : "hidden"
+            )} onClick={() => setIsInboxOpen(false)} />
+
+            <div
+                className={cn(
+                    "fixed left-0 top-0 z-50 h-full w-4/5 max-w-xs transform transition-transform duration-300 ease-in-out bg-background md:hidden",
+                    isInboxOpen ? 'translate-x-0' : '-translate-x-full'
+                )}
+            >
+                <Inbox 
+                    currentUser={user}
+                    onSelectUser={(user) => {
+                        setSelectedUser(user);
+                        setIsInboxOpen(false);
+                    }} 
+                    selectedUser={selectedUser}
+                    onLogout={handleLogout}
+                />
+            </div>
 
             <main className="flex-1 relative">
                 {selectedUser ? (
                     <ChatWindow currentUser={user} otherUser={selectedUser} />
                 ) : (
-                    <div className="flex h-full items-center justify-center bg-background p-4">
-                        <div className="text-center">
-                            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h1 className="mt-4 font-headline text-2xl text-foreground">
-                                Welcome, {user.username}
-                            </h1>
-                            <p className="mt-2 text-muted-foreground">
-                                Select a user from the inbox to start a conversation.
-                            </p>
+                    <div className="flex h-full flex-col items-center justify-center bg-background p-4 text-center">
+                        <div className="flex flex-col items-center gap-4">
+                            <MessageSquare className="h-16 w-16 text-muted-foreground" />
+                            <div className="space-y-1">
+                                <h1 className="font-headline text-3xl text-foreground">
+                                    Welcome, {user.username}
+                                </h1>
+                                <p className="text-muted-foreground">
+                                    Select a user from the inbox to start chatting.
+                                </p>
+                            </div>
                             <Button 
                                 variant="outline"
                                 className="mt-4 md:hidden"
                                 onClick={() => setIsInboxOpen(true)}
                             >
+                                <PanelRightOpen className="mr-2 h-4 w-4"/>
                                 Open Inbox
                             </Button>
                         </div>

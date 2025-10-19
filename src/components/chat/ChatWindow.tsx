@@ -16,7 +16,6 @@ import {
   addDoc,
   deleteDoc,
   getDoc,
-  serverTimestamp,
 } from 'firebase/firestore';
 import type { Message, User, CallData } from '@/lib/types';
 import MessageBubble from './MessageBubble';
@@ -27,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getChatId, cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
-import { Phone, Video } from 'lucide-react';
+import { Phone, Video, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatWindowProps {
@@ -115,11 +114,10 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     toast({ title: "Call Ended" });
   }, [localStream, remoteStream, toast]);
 
- const startCall = useCallback(async () => {
+  const startCall = useCallback(async () => {
     if (!firestore) return;
     const currentChatId = getChatId(currentUser.uid, otherUser.uid);
-    setChatId(currentChatId);
-
+    
     callDocRef.current = doc(firestore, 'calls', currentChatId);
     
     setIsCallActive(true);
@@ -172,7 +170,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
  const answerCall = useCallback(async () => {
       if (!firestore) return;
       const currentChatId = getChatId(currentUser.uid, otherUser.uid);
-      setChatId(currentChatId);
 
       callDocRef.current = doc(firestore, 'calls', currentChatId);
 
@@ -414,5 +411,3 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     </div>
   );
 }
-
-    
