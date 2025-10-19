@@ -403,7 +403,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           ))}
         </div>
       </ScrollArea>
-      <div className="shrink-0 border-t bg-background p-2 md:p-4 pb-4">
+      <div className="shrink-0 border-t bg-background p-2 md:p-4 pb-6">
         {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} receiverId={otherUser.uid} />}
       </div>
     </div>
