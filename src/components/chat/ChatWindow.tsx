@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 interface ChatWindowProps {
   currentUser: User;
   otherUser: User;
+  onBack: () => void;
 }
 
 const servers = {
@@ -43,7 +44,7 @@ const servers = {
   iceCandidatePoolSize: 10,
 };
 
-export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) {
+export default function ChatWindow({ currentUser, otherUser, onBack }: ChatWindowProps) {
   const firestore = useFirestore();
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -327,7 +328,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           hangUp();
         }
     };
-  }, [currentUser.uid, otherUser.uid, firestore]);
+  }, [currentUser.uid, otherUser.uid, firestore, hangUp]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -371,6 +372,10 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       )}
       <header className="flex shrink-0 items-center justify-between border-b p-2 md:p-4">
         <div className="flex items-center gap-2 md:gap-4">
+          <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={onBack}>
+              <ArrowLeft className="h-5 w-5" />
+              <span className="sr-only">Back</span>
+          </Button>
           <Avatar className="h-10 w-10">
             <AvatarFallback>{getInitials(chatPartner.username)}</AvatarFallback>
           </Avatar>
@@ -403,9 +408,11 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           ))}
         </div>
       </ScrollArea>
-      <div className="shrink-0 border-t bg-background p-2 md:p-4 pb-6">
+      <footer className="shrink-0 border-t bg-background p-2 md:p-4">
         {chatId && <ChatInput chatId={chatId} senderId={currentUser.uid} receiverId={otherUser.uid} />}
-      </div>
+      </footer>
     </div>
   );
 }
+
+    

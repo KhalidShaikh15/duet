@@ -8,7 +8,8 @@ import type { User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { PanelLeftOpen, PanelRightOpen, MessageSquare, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 interface AppLayoutProps {
     user: User;
@@ -18,78 +19,79 @@ interface AppLayoutProps {
 export default function AppLayout({ user, onLogout }: AppLayoutProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const handleLogout = async () => {
     onLogout();
     await signOut(getAuth());
   }
 
+  const handleSelectUser = (user: User) => {
+    setSelectedUser(user);
+    if (isMobile) {
+      setIsInboxOpen(false);
+    }
+  }
+
+  const showChat = selectedUser && (!isMobile || !isInboxOpen);
+  const showInbox = !isMobile || isInboxOpen;
+  const showWelcome = !selectedUser && !isInboxOpen;
+
   return (
     <div className="flex h-screen w-full bg-secondary">
-       {/* Desktop Sidebar */}
-       <div className="hidden md:flex md:flex-shrink-0 md:w-80">
+       {/* Desktop & Mobile Overlay Sidebar */}
+       <div className={cn(
+           "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden",
+           isInboxOpen ? "block" : "hidden"
+       )} onClick={() => setIsInboxOpen(false)} />
+       
+       <aside className={cn(
+           "h-full flex-col md:flex md:w-80 md:flex-shrink-0 border-r bg-background",
+           "fixed left-0 top-0 z-50 w-4/5 max-w-xs transform transition-transform duration-300 ease-in-out md:static md:transform-none",
+           isInboxOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+       )}>
           <Inbox 
             currentUser={user}
-            onSelectUser={(user) => {
-              setSelectedUser(user);
-              setIsInboxOpen(false);
-            }} 
+            onSelectUser={handleSelectUser} 
             selectedUser={selectedUser}
             onLogout={handleLogout}
           />
-       </div>
+       </aside>
        
        <div className="flex flex-1 flex-col h-full">
             {/* Mobile Header */}
-            <header className="flex items-center justify-between border-b p-2 md:hidden bg-background shrink-0">
-                <div className="flex items-center gap-3 overflow-hidden">
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setIsInboxOpen(!isInboxOpen)}
-                        className="h-8 w-8"
-                    >
-                        <PanelLeftOpen className="h-5 w-5" />
-                        <span className="sr-only">Toggle Inbox</span>
-                    </Button>
-                    <h1 className="font-headline text-xl font-semibold truncate">
-                        {selectedUser ? selectedUser.username : "Duet"}
-                    </h1>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout" className="h-8 w-8">
-                        <LogOut className="h-5 w-5" />
-                        <span className="sr-only">Logout</span>
-                    </Button>
-                </div>
-            </header>
-
-            {/* Mobile Inbox (Overlay) */}
-            <div className={cn(
-                "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden",
-                isInboxOpen ? "block" : "hidden"
-            )} onClick={() => setIsInboxOpen(false)} />
-
-            <div
-                className={cn(
-                    "fixed left-0 top-0 z-50 h-full w-4/5 max-w-xs transform transition-transform duration-300 ease-in-out bg-background md:hidden",
-                    isInboxOpen ? 'translate-x-0' : '-translate-x-full'
-                )}
-            >
-                <Inbox 
-                    currentUser={user}
-                    onSelectUser={(user) => {
-                        setSelectedUser(user);
-                        setIsInboxOpen(false);
-                    }} 
-                    selectedUser={selectedUser}
-                    onLogout={handleLogout}
-                />
-            </div>
+            {isMobile && (
+              <header className="flex items-center justify-between border-b p-2 bg-background shrink-0">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                      <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setIsInboxOpen(true)}
+                          className="h-8 w-8"
+                      >
+                          <PanelLeftOpen className="h-5 w-5" />
+                          <span className="sr-only">Open Inbox</span>
+                      </Button>
+                      <h1 className="font-headline text-xl font-semibold truncate">
+                          {selectedUser ? selectedUser.username : "Duet"}
+                      </h1>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout" className="h-8 w-8">
+                          <LogOut className="h-5 w-5" />
+                          <span className="sr-only">Logout</span>
+                      </Button>
+                  </div>
+              </header>
+            )}
 
             <main className="flex-1 relative h-full">
                 {selectedUser ? (
-                    <ChatWindow currentUser={user} otherUser={selectedUser} />
+                    <ChatWindow 
+                      currentUser={user} 
+                      otherUser={selectedUser}
+                      onBack={() => setSelectedUser(null)}
+                    />
                 ) : (
                     <div className="flex h-full flex-col items-center justify-center bg-background p-4 text-center">
                         <div className="flex flex-col items-center gap-4">
@@ -118,3 +120,5 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
     </div>
   );
 }
+
+    
