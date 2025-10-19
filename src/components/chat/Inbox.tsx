@@ -109,7 +109,7 @@ export default function Inbox({ currentUser, onSelectUser, selectedUser, onLogou
                 <span className="flex-1 truncate">{user.username}</span>
                 {unreadCounts[user.uid] > 0 && (
                   <Badge className="h-6 w-6 shrink-0 justify-center rounded-full p-0">
-                    {unreadCounts[user.uid]}
+                    {unreadCounts[user.uid] > 9 ? '9+' : unreadCounts[user.uid]}
                   </Badge>
                 )}
                 </button>

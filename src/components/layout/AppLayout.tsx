@@ -27,7 +27,7 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
   return (
     <div className="flex h-screen w-full bg-secondary">
        {/* Desktop Sidebar */}
-       <div className="hidden md:flex md:flex-shrink-0">
+       <div className="hidden md:flex md:flex-shrink-0 md:w-80">
           <Inbox 
             currentUser={user}
             onSelectUser={(user) => {
@@ -39,9 +39,9 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
           />
        </div>
        
-       <div className="flex flex-1 flex-col">
+       <div className="flex flex-1 flex-col h-full">
             {/* Mobile Header */}
-            <header className="flex items-center justify-between border-b p-2 md:hidden bg-background">
+            <header className="flex items-center justify-between border-b p-2 md:hidden bg-background shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
                     <Button 
                         variant="ghost" 
@@ -87,7 +87,7 @@ export default function AppLayout({ user, onLogout }: AppLayoutProps) {
                 />
             </div>
 
-            <main className="flex-1 relative">
+            <main className="flex-1 relative h-full">
                 {selectedUser ? (
                     <ChatWindow currentUser={user} otherUser={selectedUser} />
                 ) : (
