@@ -115,10 +115,9 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
   }, [localStream, remoteStream, toast]);
 
   const startCall = useCallback(async () => {
-    if (!firestore) return;
-    const currentChatId = getChatId(currentUser.uid, otherUser.uid);
+    if (!firestore || !chatId) return;
     
-    callDocRef.current = doc(firestore, 'calls', currentChatId);
+    callDocRef.current = doc(firestore, 'calls', chatId);
     
     setIsCallActive(true);
 
@@ -165,13 +164,12 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       });
     });
 
-  }, [firestore, setupStreams, initializePeerConnection, currentUser.uid, otherUser.uid]);
+  }, [firestore, setupStreams, initializePeerConnection, currentUser.uid, otherUser.uid, chatId]);
 
  const answerCall = useCallback(async () => {
-      if (!firestore) return;
-      const currentChatId = getChatId(currentUser.uid, otherUser.uid);
+      if (!firestore || !chatId) return;
 
-      callDocRef.current = doc(firestore, 'calls', currentChatId);
+      callDocRef.current = doc(firestore, 'calls', chatId);
 
       setIsReceivingCall(false);
       setIsCallActive(true);
@@ -217,7 +215,7 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         });
       }
 
-  }, [firestore, setupStreams, initializePeerConnection, hangUp, currentUser.uid, otherUser.uid]);
+  }, [firestore, setupStreams, initializePeerConnection, hangUp, chatId]);
 
   const handleDeleteMessage = async (messageId: string) => {
     if (!firestore || !chatId) return;
@@ -320,7 +318,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
         console.error("Error fetching messages:", error);
     });
     
-    // The cleanup function, which is critical.
     return () => {
         unsubscribeUser();
         unsubscribeMessages();
@@ -372,7 +369,6 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
       )}
       <header className="flex shrink-0 items-center justify-between border-b p-2 md:p-4">
         <div className="flex items-center gap-2 md:gap-4">
-          <span className="md:hidden" />
           <Avatar className="h-10 w-10">
             <AvatarFallback>{getInitials(chatPartner.username)}</AvatarFallback>
           </Avatar>
@@ -398,8 +394,8 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
           )}
         </div>
       </header>
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-4">
+      <ScrollArea className="flex-1" ref={scrollAreaRef}>
+        <div className="space-y-4 p-4">
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} isOwnMessage={msg.senderId === currentUser.uid} onDelete={() => handleDeleteMessage(msg.id)} />
           ))}
@@ -411,3 +407,5 @@ export default function ChatWindow({ currentUser, otherUser }: ChatWindowProps) 
     </div>
   );
 }
+
+    
